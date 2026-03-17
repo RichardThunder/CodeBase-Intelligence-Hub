@@ -186,7 +186,7 @@ if __name__ == "__main__":
 ### 4.1 本阶段依赖
 
 ```toml
-langchain-core>=0.3.0
+langchain-core>=1.2.19
 langchain-community>=0.3.0
 langchain-text-splitters>=0.3.0
 ```

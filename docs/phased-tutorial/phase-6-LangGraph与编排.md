@@ -164,8 +164,8 @@ for event in graph.stream({"user_query": "主入口在哪？"}):
 
 ```toml
 langgraph>=0.2.0
-langchain-openai>=0.2.0
-langchain-core>=0.3.0
+langchain-openai>=1.1.11
+langchain-core>=1.2.19
 pydantic>=2.0
 ```
 

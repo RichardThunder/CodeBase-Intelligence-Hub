@@ -147,7 +147,7 @@ Chroma 的 filter 语法见其文档；不同 VectorStore 的 filter 写法略�
 ```toml
 langchain-chroma>=0.1.0
 chromadb>=0.4.0
-langchain-openai>=0.2.0
+langchain-openai>=1.1.11
 ```
 
 ```bash

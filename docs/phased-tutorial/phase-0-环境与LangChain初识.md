@@ -111,11 +111,11 @@ if __name__ == "__main__":
 
 ```toml
 # 在 pyproject.toml 的 [project] dependencies 中加入，或单独安装：
-langchain-core>=0.3.0
-langchain-openai>=0.2.0
-python-dotenv>=1.0.0
-openai>=1.0.0
-pydantic-settings>=2.0.0   # 若用 config/settings.py
+langchain-core>=1.2.19
+langchain-openai>=1.1.11
+python-dotenv>=1.2.2
+openai>=2.28.0
+pydantic-settings>=2.13.1   # 若用 config/settings.py
 ```
 
 安装命令（在项目根目录）：

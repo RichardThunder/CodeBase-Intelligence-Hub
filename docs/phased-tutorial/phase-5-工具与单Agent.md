@@ -152,8 +152,8 @@ result = agent.invoke({"messages": [HumanMessage(content="主入口在哪？")]}
 ### 4.1 本阶段依赖
 
 ```toml
-langchain-core>=0.3.0
-langchain-openai>=0.2.0
+langchain-core>=1.2.19
+langchain-openai>=1.1.11
 pydantic>=2.0
 ```
 
