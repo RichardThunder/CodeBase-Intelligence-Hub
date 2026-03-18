@@ -3,7 +3,7 @@
 from typing import Optional
 from langchain_chroma import Chroma
 from langchain_community.retrievers import BM25Retriever
-from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
+from langchain_classic.retrievers import EnsembleRetriever, MultiQueryRetriever
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from langchain_core.language_model import BaseLanguageModel
@@ -126,7 +126,9 @@ def build_retrieval_pipeline(
                 CrossEncoderReranker,
             )
             from langchain_community.cross_encoders import HuggingFaceCrossEncoder
-            from langchain.retrievers import ContextualCompressionRetriever
+            from langchain_classic.retrievers.contextual_compression import (
+                ContextualCompressionRetriever,
+            )
 
             model = HuggingFaceCrossEncoder(
                 model_name="cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
