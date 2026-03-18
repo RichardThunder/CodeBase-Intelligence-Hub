@@ -2,10 +2,13 @@
 
 from typing import Optional
 from langchain_chroma import Chroma
-from langchain_community.retrievers import BM25Retriever
+from langchain_community.retrievers import (
+    BM25Retriever,
+    EnsembleRetriever,
+    MultiQueryRetriever,
+)
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
-from langchain.retrievers import EnsembleRetriever, MultiQueryRetriever
 from langchain_core.language_model import BaseLanguageModel
 from config.settings import Settings
 
@@ -126,13 +129,13 @@ def build_retrieval_pipeline(
                 CrossEncoderReranker,
             )
             from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+            from langchain_community.retrievers import ContextualCompressionRetriever
 
             model = HuggingFaceCrossEncoder(
                 model_name="cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
             )
             compressor = CrossEncoderReranker(model=model, top_n=5)
 
-            from langchain.retrievers import ContextualCompressionRetriever
             retriever = ContextualCompressionRetriever(
                 base_compressor=compressor,
                 base_retriever=retriever,
