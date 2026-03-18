@@ -48,49 +48,47 @@ async def lifespan(app: FastAPI):
     )
     print("✅ LLM initialized")
 
-    # Load vector store
+    # Initialize embeddings and vector store (without loading documents)
     try:
         embeddings = get_embeddings(_settings)
         vectorstore = get_vectorstore(_settings)
-        print(f"✅ Vector store loaded: {_settings.chroma_collection}")
+        print(f"✅ Vector store initialized: {_settings.chroma_collection}")
 
-        # Build retrieval pipeline
-        from retrieval.loaders import load_codebase_with_parser
+        # Initialize with empty retriever - will be built after ingest
+        retriever = vectorstore.as_retriever()
 
-        try:
-            # Try to load documents for BM25 (optional)
-            docs = load_codebase_with_parser(".")
-            retriever = build_retrieval_pipeline(vectorstore, docs, _llm, _settings)
-        except Exception:
-            # Fallback to simple vector retriever if loading documents fails
-            retriever = vectorstore.as_retriever()
-            print("⚠️  Using simple vector retriever (document loading failed)")
-
-        # Build RAG chain
+        # Build RAG chain with empty retriever
         _rag_chain = build_rag_chain(retriever, _llm)
-        print("✅ RAG chain built")
+        print("✅ RAG chain initialized (awaiting document ingestion)")
 
         # Build LangGraph (imported here to avoid circular dependencies)
         from graph.builder import build_graph
         _graph = build_graph(retriever, _llm, _settings)
-        print("✅ LangGraph orchestrator built")
+        print("✅ LangGraph orchestrator initialized")
 
-        # Register API routes after all dependencies are initialized
+        # Register API routes
         api_routes = create_routes(_graph, _llm, _settings)
         app.include_router(api_routes)
         print("✅ API routes registered")
 
-        # Add RAG chain via LangServe for direct invocation
+        # Add RAG chain via LangServe
         add_routes(app, _rag_chain, path="/rag")
         print("✅ LangServe RAG endpoint registered")
 
     except Exception as e:
         print(f"⚠️  Warning during initialization: {e}")
-        print("💡 You can ingest documents using: python scripts/ingest.py --repo-path .")
+        print("💡 Core services may not be fully initialized")
 
+    print("\n" + "="*60)
     print("🚀 API ready at http://localhost:8000")
-    print("📚 Interactive docs: http://localhost:8000/docs")
-    print("🔌 LangServe playground: http://localhost:8000/rag/playground")
+    print("="*60)
+    print("\n📋 Next steps:")
+    print("  1. Open http://localhost:8000")
+    print("  2. Enter your project folder path in the sidebar")
+    print("  3. Click '📥 Ingest' to index your codebase")
+    print("  4. Start asking questions about your code!\n")
+    print("📚 API Documentation: http://localhost:8000/docs")
+    print("🔌 LangServe Playground: http://localhost:8000/rag/playground")
 
     yield
 

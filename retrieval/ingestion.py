@@ -40,7 +40,7 @@ def _add_documents_batch(
     batch_index: int,
     total_batches: int,
 ) -> int:
-    """Add a batch of documents to vectorstore.
+    """Add a batch of documents to vectorstore with sub-batching for API limits.
 
     Args:
         vectorstore: Vector store instance
@@ -51,14 +51,24 @@ def _add_documents_batch(
     Returns:
         Number of documents added
     """
-    try:
-        vectorstore.add_documents(batch)
-        progress = f"({batch_index}/{total_batches})"
-        print(f"  📝 Added batch {progress}: {len(batch)} chunks")
-        return len(batch)
-    except Exception as e:
-        print(f"  ❌ Error adding batch {batch_index}: {e}")
-        return 0
+    # GLM API has a limit of 64 items per request
+    # Further divide batch into smaller chunks
+    MAX_API_BATCH = 32  # Use 32 to be safe (under GLM's 64 limit)
+
+    total_added = 0
+    for sub_idx in range(0, len(batch), MAX_API_BATCH):
+        sub_batch = batch[sub_idx:sub_idx + MAX_API_BATCH]
+        try:
+            vectorstore.add_documents(sub_batch)
+            total_added += len(sub_batch)
+        except Exception as e:
+            print(f"  ❌ Error adding batch {batch_index} (sub-batch {sub_idx//MAX_API_BATCH + 1}): {e}")
+            # Continue with next sub-batch instead of failing completely
+            continue
+
+    progress = f"({batch_index}/{total_batches})"
+    print(f"  📝 Added batch {progress}: {total_added} chunks")
+    return total_added
 
 
 def ingest_repo(
@@ -66,7 +76,7 @@ def ingest_repo(
     settings: Settings,
     use_parser: bool = True,
     num_threads: int = 4,
-    batch_size: int = 100,
+    batch_size: int = 64,
 ) -> int:
     """Ingest entire codebase into vector store with multi-threading.
 
@@ -134,13 +144,22 @@ def ingest_repo(
                 except Exception as e:
                     print(f"  ❌ Batch processing error: {e}")
     else:
-        # Single batch - add directly
-        vectorstore.add_documents(split_docs)
-        total_added = len(split_docs)
-        print(f"  ✅ Added {len(split_docs)} chunks")
+        # Single batch - add with sub-batching for API limits
+        MAX_API_BATCH = 32
+        total_added = 0
+        for sub_idx in range(0, len(split_docs), MAX_API_BATCH):
+            sub_batch = split_docs[sub_idx:sub_idx + MAX_API_BATCH]
+            try:
+                vectorstore.add_documents(sub_batch)
+                total_added += len(sub_batch)
+            except Exception as e:
+                print(f"  ⚠️  Error adding sub-batch {sub_idx//MAX_API_BATCH + 1}: {e}")
+                continue
+        print(f"  ✅ Added {total_added} chunks")
 
-    # Persist
-    vectorstore.persist()
+    # Persist if method exists (newer ChromaDB versions auto-persist)
+    if hasattr(vectorstore, 'persist'):
+        vectorstore.persist()
     print(f"\n✅ Ingestion complete: {total_added} chunks indexed")
 
     return total_added
@@ -172,6 +191,9 @@ def ingest_single_document(
     vectorstore = get_vectorstore(settings)
 
     vectorstore.add_documents(split_docs)
-    vectorstore.persist()
+
+    # Persist if method exists
+    if hasattr(vectorstore, 'persist'):
+        vectorstore.persist()
 
     return len(split_docs)

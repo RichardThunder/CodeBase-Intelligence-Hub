@@ -22,14 +22,49 @@ def build_vectorstore(
     Returns:
         Chroma vector store with documents persisted to disk
     """
-    vectorstore = Chroma.from_documents(
-        documents=docs,
-        embedding=embeddings,
-        persist_directory=settings.chroma_persist_dir,
-        collection_name=settings.chroma_collection,
-    )
-    vectorstore.persist()
-    return vectorstore
+    if not docs:
+        print("  ⚠️  No documents to index, creating empty vector store")
+        return Chroma(
+            collection_name=settings.chroma_collection,
+            embedding_function=embeddings,
+            persist_directory=settings.chroma_persist_dir,
+        )
+
+    try:
+        vectorstore = Chroma.from_documents(
+            documents=docs,
+            embedding=embeddings,
+            persist_directory=settings.chroma_persist_dir,
+            collection_name=settings.chroma_collection,
+        )
+        # Persist if method exists (newer ChromaDB versions auto-persist)
+        if hasattr(vectorstore, 'persist'):
+            vectorstore.persist()
+        return vectorstore
+    except ValueError as e:
+        if "non-empty list" in str(e):
+            print(f"  ⚠️  Embedding error: {e}")
+            print("  Creating empty vector store and attempting batch insertion...")
+            vectorstore = Chroma(
+                collection_name=settings.chroma_collection,
+                embedding_function=embeddings,
+                persist_directory=settings.chroma_persist_dir,
+            )
+            # Try adding documents in smaller batches
+            batch_size = 10
+            for i in range(0, len(docs), batch_size):
+                batch = docs[i:i+batch_size]
+                try:
+                    vectorstore.add_documents(batch)
+                    print(f"  Added batch {i//batch_size + 1}")
+                except Exception as batch_error:
+                    print(f"  ⚠️  Batch {i//batch_size + 1} failed: {batch_error}")
+                    continue
+            # Persist if method exists
+            if hasattr(vectorstore, 'persist'):
+                vectorstore.persist()
+            return vectorstore
+        raise
 
 
 def load_vectorstore(
