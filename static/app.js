@@ -3,6 +3,15 @@
  * Real-time chat interface with SSE streaming support
  */
 
+// Import marked for markdown rendering
+import { marked } from 'https://cdn.jsdelivr.net/npm/marked@11.1.1/+esm';
+
+// Configure marked
+marked.setOptions({
+    breaks: true,
+    gfm: true,
+});
+
 // Configuration
 const API_BASE = window.location.origin;
 const HEALTH_CHECK_INTERVAL = 3000; // 3 seconds
@@ -123,6 +132,9 @@ async function streamChat(query) {
     const contentEl = messageEl.querySelector('.message-bubble');
     let fullResponse = '';
 
+    // Set up markdown rendering for streaming
+    contentEl.className = 'message-bubble markdown-content';
+
     const params = new URLSearchParams({
         query: query,
         session_id: currentSessionId,
@@ -156,7 +168,7 @@ async function streamChat(query) {
                 }
 
                 fullResponse += data;
-                contentEl.textContent = fullResponse;
+                contentEl.innerHTML = marked(fullResponse);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         }
@@ -186,7 +198,7 @@ async function regularChat(query) {
     }
 
     const data = await response.json();
-    const messageEl = addMessage('assistant', data.answer);
+    const messageEl = addMessage('assistant', data.answer, true);
 
     // Add sources if available
     if (data.sources && data.sources.length > 0) {
@@ -213,13 +225,19 @@ async function regularChat(query) {
     }
 }
 
-function addMessage(role, content) {
+function addMessage(role, content, renderMarkdown = false) {
     const messageEl = document.createElement('div');
     messageEl.className = `message ${role}`;
 
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
-    bubble.textContent = content;
+
+    // Render markdown for assistant messages
+    if (renderMarkdown && role === 'assistant') {
+        bubble.innerHTML = marked(content);
+    } else {
+        bubble.textContent = content;
+    }
 
     messageEl.appendChild(bubble);
     chatMessages.appendChild(messageEl);

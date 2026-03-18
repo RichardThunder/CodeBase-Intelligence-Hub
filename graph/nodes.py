@@ -11,6 +11,12 @@ from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.retrievers import BaseRetriever
 from graph.state import AgentState
 from tools import get_code_tools, get_git_tools
+from config.prompts import (
+    ORCHESTRATOR_SYSTEM_PROMPT,
+    ANALYSIS_SYSTEM_PROMPT,
+    CODE_GENERATION_SYSTEM_PROMPT,
+    SYNTHESIZER_SYSTEM_PROMPT,
+)
 
 
 def clean_json_output(text: str) -> str:
@@ -60,20 +66,9 @@ def orchestrator_node(
     if state.get("intent") and state.get("next_agent"):
         return {}
 
-    # Classify intent
+    # Classify intent using production prompt
     prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            """对用户查询进行意图分类。返回一个 JSON 对象，包含：
-- intent: code_lookup(代码位置查询), explanation(解释说明), bug_analysis(问题分析), general_qa(通用问答)
-- confidence: 0-1置信度
-- reasoning: 简短理由
-
-严格要求：
-1. 只返回纯 JSON，不要任何其他文本
-2. 不要使用 Markdown 代码块 (```json ... ```)
-3. 直接返回 JSON 对象""",
-        ),
+        ("system", ORCHESTRATOR_SYSTEM_PROMPT),
         ("human", "{query}"),
     ])
 
@@ -156,27 +151,20 @@ def analysis_node(
         }
 
     # Format context from retrieved chunks
+    # Escape curly braces to prevent LangChain template parsing
     context = "\n\n".join([
-        f"【{chunk['file_path']}】\n{chunk['content'][:500]}"
+        f"【{chunk['file_path']}】\n{chunk['content'][:500].replace('{', '{{').replace('}', '}}')}"
         for chunk in state["retrieved_chunks"][:3]
     ])
 
     prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            """你是一个代码分析专家。基于以下代码片段，提供深入的分析和解释。
-分析应包括：
-1. 代码的主要功能
-2. 关键设计模式
-3. 可能的改进点
-4. 与其他模块的关系""",
-        ),
-        ("human", f"""用户问题：{state['user_query']}
+        ("system", ANALYSIS_SYSTEM_PROMPT),
+        ("human", f"""User Question: {state['user_query']}
 
-代码上下文：
+Code Context:
 {context}
 
-请提供详细分析。"""),
+Please provide detailed analysis."""),
     ])
 
     analysis = prompt | llm | StrOutputParser()
@@ -202,17 +190,9 @@ def code_node(
 
     This agent requires human approval before execution.
     """
-    # Plan code generation
+    # Plan code generation using production prompt
     prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            """你是一个代码生成专家。根据用户需求和代码库上下文，生成或建议代码。
-生成的代码必须：
-1. 遵循现有代码风格
-2. 使用现有的工具和库
-3. 包含必要的错误处理
-4. 有清晰的注释""",
-        ),
+        ("system", CODE_GENERATION_SYSTEM_PROMPT),
         ("human", state["user_query"]),
     ])
 
@@ -261,9 +241,18 @@ def synthesizer_node(
     aggregated_context = []
 
     if state.get("retrieved_chunks"):
-        aggregated_context.append(
-            f"检索到的代码片段({len(state['retrieved_chunks'])}个)"
-        )
+        chunks_content = []
+        for chunk in state["retrieved_chunks"][:5]:  # Limit to 5 chunks
+            file_path = chunk.get("file_path", "unknown")
+            content = chunk.get("content", "")[:500]  # Limit content length
+            # Escape curly braces in code to prevent LangChain template parsing
+            escaped_content = content.replace("{", "{{").replace("}", "}}")
+            chunks_content.append(f"【{file_path}】\n{escaped_content}")
+
+        if chunks_content:
+            aggregated_context.append(
+                "Retrieved Code Snippets:\n" + "\n\n".join(chunks_content)
+            )
 
     if state.get("analysis_results"):
         aggregated_context.append(
@@ -281,21 +270,13 @@ def synthesizer_node(
     context_str = "\n".join(aggregated_context) if aggregated_context else "无特定结果"
 
     prompt = ChatPromptTemplate.from_messages([
-        (
-            "system",
-            """你是一个代码库问答助手。根据以下信息综合生成最终答案。
-答案应该：
-1. 准确回答用户问题
-2. 引用相关代码片段
-3. 提供清晰的解释
-4. 突出重点信息""",
-        ),
-        ("human", f"""用户问题: {state['user_query']}
+        ("system", SYNTHESIZER_SYSTEM_PROMPT),
+        ("human", f"""User Question: {state['user_query']}
 
-可用信息:
+Available Information:
 {context_str}
 
-请生成最终答案。"""),
+Please generate the final answer."""),
     ])
 
     synthesizer = prompt | llm | StrOutputParser()

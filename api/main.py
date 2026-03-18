@@ -10,6 +10,7 @@ from langserve import add_routes
 from dotenv import load_dotenv
 
 from config.settings import Settings
+from config.logging_config import setup_logging, LLMRequestLogger
 from retrieval.vectorstore import get_vectorstore
 from retrieval.embeddings import get_embeddings
 from retrieval.pipeline import build_retrieval_pipeline
@@ -36,17 +37,23 @@ async def lifespan(app: FastAPI):
     # Startup
     print("⏳ Initializing CodeBase Intelligence Hub API...")
 
+    # Set up logging
+    setup_logging()
+    print("✅ Logging configured")
+
     load_dotenv()
     _settings = Settings()
 
-    # Initialize LLM
+    # Initialize LLM with request logging
+    llm_logger = LLMRequestLogger()
     _llm = ChatOpenAI(
         model=_settings.llm_model,
         temperature=0,
         api_key=_settings.openai_api_key.get_secret_value(),
         base_url=_settings.openai_api_base,
+        callbacks=[llm_logger],
     )
-    print("✅ LLM initialized")
+    print("✅ LLM initialized with request logging")
 
     # Initialize embeddings and vector store (without loading documents)
     try:
@@ -66,8 +73,8 @@ async def lifespan(app: FastAPI):
         _graph = build_graph(retriever, _llm, _settings)
         print("✅ LangGraph orchestrator initialized")
 
-        # Register API routes
-        api_routes = create_routes(_graph, _llm, _settings)
+        # Register API routes (with LangGraph)
+        api_routes = create_routes(retriever, _llm, _settings)
         app.include_router(api_routes)
         print("✅ API routes registered")
 
