@@ -1,5 +1,6 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_text_splitters import Language
+from langchain_core.documents import Document
 
 
 def get_doc_splitter(chund_size: int = 800, chunk_overlap: int = 150):
@@ -20,8 +21,6 @@ def get_python_splitter(chunk_size: int = 1000, chunk_overlap: int = 200):
 
 
 def split_document(docs: list[Document], use_python_for_py: bool = True):
-    from langchain_core.documents import Document
-
     py_splitter = get_python_splitter()
     doc_splitter = get_doc_splitter()
     out = []
