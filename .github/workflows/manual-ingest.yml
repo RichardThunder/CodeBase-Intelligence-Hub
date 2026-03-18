@@ -1,0 +1,73 @@
+name: Manual Repository Ingestion
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo_path:
+        description: 'Repository path to ingest'
+        required: true
+        default: '.'
+      collection_name:
+        description: 'ChromaDB collection name'
+        required: false
+        default: 'codebase_v1'
+      use_parser:
+        description: 'Use language-aware parser'
+        type: boolean
+        required: false
+        default: true
+
+jobs:
+  ingest:
+    name: Ingest Repository
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: pip install --no-cache-dir uv
+
+      - name: Cache uv environment
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('**/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Create .env file
+        run: |
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" > .env
+          echo "OPENAI_API_BASE=${{ secrets.OPENAI_API_BASE }}" >> .env
+        if: secrets.OPENAI_API_KEY != ''
+
+      - name: Run ingestion
+        run: |
+          uv run python scripts/ingest.py \
+            --repo-path "${{ github.event.inputs.repo_path }}" \
+            --collection "${{ github.event.inputs.collection_name }}" \
+            ${{ github.event.inputs.use_parser == 'true' && '' || '--no-parser' }}
+
+      - name: Upload ingestion logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: ingestion-logs
+          path: |
+            *.log
+          if-no-files-found: ignore
+        if: always()
+
+      - name: Notify completion
+        run: |
+          echo "✅ Repository ingestion completed"
+          echo "Collection: ${{ github.event.inputs.collection_name }}"
+          echo "Repository path: ${{ github.event.inputs.repo_path }}"

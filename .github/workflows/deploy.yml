@@ -1,0 +1,95 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ "v*" ]
+  workflow_run:
+    workflows: [ "CI/CD Pipeline" ]
+    branches: [ main ]
+    types: [ completed ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=sha
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image pushed
+        run: |
+          echo "🐳 Docker image pushed to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo "Tags: ${{ steps.meta.outputs.tags }}"
+
+      # Optional: Deploy to cloud provider (uncomment and configure)
+      # - name: Deploy to Cloud Run
+      #   uses: google-github-actions/deploy-cloudrun@v1
+      #   with:
+      #     service: codebase-hub
+      #     image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+      #     region: us-central1
+      #     secrets: |
+      #       OPENAI_API_KEY=OPENAI_API_KEY:latest
+      #     env_vars: |
+      #       OPENAI_API_BASE=${{ secrets.OPENAI_API_BASE }}
+
+  notify-slack:
+    name: Notify Slack
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+    steps:
+      - name: Send Slack notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Deployment ${{ job.status }}
+            Repository: ${{ github.repository }}
+            Branch: ${{ github.ref }}
+            Commit: ${{ github.sha }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: secrets.SLACK_WEBHOOK != ''
+        continue-on-error: true

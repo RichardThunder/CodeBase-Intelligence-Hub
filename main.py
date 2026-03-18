@@ -1,31 +1,30 @@
-import os
-from dotenv import load_dotenv
+from config.settings import Settings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnableSerializable
 from langchain_openai import ChatOpenAI
 
-load_dotenv()
 
-
-def main():
-    prompt = ChatPromptTemplate.from_messages(
+def main() -> None:
+    settings: Settings = Settings()
+    prompt: ChatPromptTemplate = ChatPromptTemplate.from_messages(  # type: ignore[assignment]
         [
             ("system", "你是一个代码库助手, 用简洁的中文回答"),
             ("human", "{question}"),
         ]
     )
-    llm = ChatOpenAI(
+    llm: ChatOpenAI = ChatOpenAI(
         model="GLM-4.7",
         temperature=0,
-        api_key=os.getenv("OPENAI_API_KEY"),
-        base_url=os.getenv("OPENAI_API_BASE"),
+        api_key=settings.openai_api_key,
+        base_url=settings.openai_api_base,
     )
 
-    parser = StrOutputParser()
+    parser: StrOutputParser = StrOutputParser()
 
-    chain = prompt | llm | parser
+    chain: RunnableSerializable[dict, str] = prompt | llm | parser
 
-    answer = chain.invoke({"question": "什么是 RAG? 用一句话说明."})
+    answer: str = chain.invoke({"question": "什么是 RAG? 用一句话说明."})
     print(answer)
 
 

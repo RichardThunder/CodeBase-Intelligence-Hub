@@ -69,16 +69,21 @@ class Settings(BaseSettings):
 # main.py（Phase 0 版本）
 import os
 from dotenv import load_dotenv
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+)
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
 def main():
+    # 使用显式 MessagePromptTemplate 提高类型安全性，避免 Pylance 警告
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "你是一个代码库助手，用简洁中文回答。"),
-        ("human", "{question}"),
+        SystemMessagePromptTemplate.from_template("你是一个代码库助手，用简洁中文回答。"),
+        HumanMessagePromptTemplate.from_template("{question}"),
     ])
     llm = ChatOpenAI(
         model="gpt-4o-mini",
@@ -99,7 +104,7 @@ if __name__ == "__main__":
 ```
 
 要点：
-- `ChatPromptTemplate.from_messages` 支持 system/human/ai 角色，`{question}` 为变量。
+- `ChatPromptTemplate.from_messages` 支持显式的 `MessagePromptTemplate` 对象，这比使用元组 `("system", "...")` 更能获得 IDE 的类型支持。
 - `StrOutputParser()` 把 `AIMessage` 转成 `str`。
 - `prompt | llm | parser` 即 LCEL 写法：按顺序执行，上一段输出作为下一段输入。
 

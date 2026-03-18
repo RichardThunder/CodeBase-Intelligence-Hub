@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # CodeBase Intelligence Hub API
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_BASE=${OPENAI_API_BASE:-https://api.openai.com/v1}
+      - LLM_MODEL=GLM-4.7
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8001
+      - CHROMA_COLLECTION=codebase_v1
+    volumes:
+      - ./chroma_db:/app/chroma_db
+      - ..:/app/code  # Mount code for ingestion
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    networks:
+      - hub-network
+    restart: unless-stopped
+
+  # ChromaDB vector store
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8001:8001"
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma_db
+    volumes:
+      - ./chroma_db:/chroma_db
+    networks:
+      - hub-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+networks:
+  hub-network:
+    driver: bridge
+
+volumes:
+  chroma_db:
+    driver: local
