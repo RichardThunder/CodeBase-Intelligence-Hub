@@ -6,7 +6,7 @@ from langchain_community.retrievers import BM25Retriever
 from langchain_classic.retrievers import EnsembleRetriever, MultiQueryRetriever
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
-from langchain_core.language_model import BaseLanguageModel
+from langchain_core.language_models import BaseLanguageModel
 from config.settings import Settings
 
 

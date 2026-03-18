@@ -3,7 +3,7 @@
 from typing import Any
 from datetime import datetime
 from pydantic import BaseModel, Field
-from langchain_core.language_model import BaseLanguageModel
+from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.retrievers import BaseRetriever

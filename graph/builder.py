@@ -2,7 +2,7 @@
 
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_core.language_model import BaseLanguageModel
+from langchain_core.language_models import BaseLanguageModel
 from langchain_core.retrievers import BaseRetriever
 from config.settings import Settings
 from graph.state import AgentState

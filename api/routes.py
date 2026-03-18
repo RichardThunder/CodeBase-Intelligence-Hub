@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import AsyncGenerator
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
-from langchain_core.language_model import BaseLanguageModel
+from langchain_core.language_models import BaseLanguageModel
 from langchain_core.retrievers import BaseRetriever
 from api.schemas import (
     ChatRequest,

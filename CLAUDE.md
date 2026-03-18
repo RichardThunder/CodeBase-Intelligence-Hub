@@ -10,6 +10,8 @@ The LLM backend uses an **OpenAI-compatible API** — currently configured to us
 
 ## Environment Setup
 
+use langchain
+
 ```bash
 # Copy env template and fill in API keys
 cp .env.example .env
