@@ -1,6 +1,6 @@
 # 教学：如何调用国产大模型 GLM（智谱）
 
-本节约你在项目中接入**智谱 AI 的 GLM 系列模型**（如 GLM-4、GLM-4.7），可与 Phase 0 / Phase 1 的链无缝替换，便于在无法使用 OpenAI 时改用国产模型。
+本节需要你在项目中接入**智谱 AI 的 GLM 系列模型**（如 GLM-4、GLM-4.7），可与 Phase 0 / Phase 1 的链无缝替换，便于在无法使用 OpenAI 时改用国产模型。
 
 **参考文档**：[智谱开放平台 - GLM-4.7](https://docs.bigmodel.cn/cn/guide/models/text/glm-4.7#python)
 
@@ -250,7 +250,7 @@ pip install zhipuai
 
 ---
 
-## 5. 本节约你掌握的内容
+## 5. 本节后你掌握的内容
 
 - **智谱 v4 与 OpenAI 接口兼容**：用 `ChatOpenAI(base_url=智谱v4, api_key=ZHIPU_API_KEY, model=glm-xxx)` 即可在 LangChain 中使用 GLM。
 - **统一 LLM 工厂**：通过 `get_llm(provider="zhipu")` 或环境变量 `DEFAULT_LLM_PROVIDER=zhipu`，可在不改链/图代码的前提下切换国产模型。
