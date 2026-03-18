@@ -1,8 +1,11 @@
 """FastAPI application entry point with LangServe integration."""
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from langserve import add_routes
 from dotenv import load_dotenv
 
@@ -72,6 +75,15 @@ async def lifespan(app: FastAPI):
         _graph = build_graph(retriever, _llm, _settings)
         print("✅ LangGraph orchestrator built")
 
+        # Register API routes after all dependencies are initialized
+        api_routes = create_routes(_graph, _llm, _settings)
+        app.include_router(api_routes)
+        print("✅ API routes registered")
+
+        # Add RAG chain via LangServe for direct invocation
+        add_routes(app, _rag_chain, path="/rag")
+        print("✅ LangServe RAG endpoint registered")
+
     except Exception as e:
         print(f"⚠️  Warning during initialization: {e}")
         print("💡 You can ingest documents using: python scripts/ingest.py --repo-path .")
@@ -94,26 +106,47 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add CORS middleware for local development
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for local development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.get("/", response_class=HTMLResponse)
+# Mount static files
+static_dir = Path(__file__).parent.parent / "static"
+if static_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+
+@app.get("/")
 async def root():
-    """Root endpoint with documentation links."""
-    return """
+    """Root endpoint - serve the frontend UI."""
+    index_file = Path(__file__).parent.parent / "static" / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+
+    # Fallback if index.html doesn't exist
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse("""
     <html>
         <head>
             <title>CodeBase Intelligence Hub</title>
             <style>
-                body { font-family: Arial, sans-serif; margin: 40px; }
-                h1 { color: #333; }
+                body { font-family: Arial, sans-serif; margin: 40px; background: #1e1e1e; color: #d4d4d4; }
+                h1 { color: #007acc; }
                 ul { line-height: 1.8; }
-                a { color: #0066cc; text-decoration: none; }
+                a { color: #007acc; text-decoration: none; }
                 a:hover { text-decoration: underline; }
-                code { background: #f0f0f0; padding: 2px 5px; }
+                code { background: #252526; padding: 2px 5px; border-radius: 3px; }
             </style>
         </head>
         <body>
             <h1>🧠 CodeBase Intelligence Hub</h1>
             <p>RAG-based codebase Q&A system with multi-agent orchestration</p>
+            <p><strong>Note:</strong> Frontend UI not found. Please check that static/index.html exists.</p>
 
             <h2>📚 Documentation</h2>
             <ul>
@@ -121,63 +154,9 @@ async def root():
                 <li><a href="/redoc">ReDoc documentation</a></li>
                 <li><a href="/rag/playground">LangServe RAG Playground</a></li>
             </ul>
-
-            <h2>🚀 Quick Start</h2>
-            <ul>
-                <li><strong>Ingest code:</strong> <code>python scripts/ingest.py --repo-path .</code></li>
-                <li><strong>Ask questions:</strong> POST to <code>/api/chat</code></li>
-                <li><strong>Stream responses:</strong> GET <code>/api/chat/stream?query=...</code></li>
-            </ul>
-
-            <h2>💻 Endpoints</h2>
-            <ul>
-                <li><strong>POST /api/chat</strong> - Chat with RAG system</li>
-                <li><strong>GET /api/chat/stream</strong> - Stream response</li>
-                <li><strong>POST /api/ingest</strong> - Ingest repository</li>
-                <li><strong>GET /api/health</strong> - Health check</li>
-                <li><strong>GET /rag/invoke</strong> - Direct RAG invocation (LangServe)</li>
-            </ul>
         </body>
     </html>
-    """
-
-
-# Register API routes
-api_routes = create_routes(
-    retriever=None,  # Will be set during request if needed
-    llm=None,
-    settings=None,
-)
-
-
-async def get_dependencies():
-    """Get dependencies for routes (called for each request)."""
-    # These will be initialized during startup
-    global _settings, _llm, _graph
-    return _settings, _llm, _graph
-
-
-# Note: The route handlers in api/routes.py use closures to capture dependencies
-# For a production setup, we could use dependency injection with FastAPI's Depends()
-
-
-# Add RAG chain via LangServe for direct invocation
-if _rag_chain is not None:
-    add_routes(app, _rag_chain, path="/rag")
-
-
-# Mount API routes manually
-@app.post("/api/chat")
-async def chat_endpoint(request):
-    """Chat endpoint handler."""
-    from api.schemas import ChatRequest
-    chat_req = ChatRequest(**request.dict())
-    routes = create_routes(_graph, _llm, _settings) if all([_graph, _llm, _settings]) else None
-    # ... implementation
-
-
-# For production, consider using an async context manager for the FastAPI app
-# to properly handle startup/shutdown with dependency injection
+    """)
 
 
 if __name__ == "__main__":

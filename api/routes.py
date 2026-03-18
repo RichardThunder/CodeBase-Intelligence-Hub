@@ -70,8 +70,9 @@ def create_routes(
                 "timestamps": [],
             }
 
-            # Invoke graph
-            result = graph.invoke(state_input)
+            # Invoke graph with checkpointer config
+            config = {"configurable": {"thread_id": request.session_id}}
+            result = graph.invoke(state_input, config=config)
 
             answer = result.get("final_answer", "No answer generated")
 
@@ -140,8 +141,9 @@ def create_routes(
                 "timestamps": [],
             }
 
-            # Stream graph execution
-            for chunk in graph.stream(state_input, stream_mode="values"):
+            # Stream graph execution with checkpointer config
+            config = {"configurable": {"thread_id": session_id}}
+            for chunk in graph.stream(state_input, config=config, stream_mode="values"):
                 if "final_answer" in chunk and chunk["final_answer"]:
                     yield f"data: {chunk['final_answer']}\n\n"
 

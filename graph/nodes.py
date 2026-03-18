@@ -1,14 +1,30 @@
 """Node functions for LangGraph orchestration."""
 
+import json
+import re
 from typing import Any
 from datetime import datetime
 from pydantic import BaseModel, Field
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import StrOutputParser
+from langchain_core.output_parsers import StrOutputParser, JsonOutputParser
 from langchain_core.retrievers import BaseRetriever
 from graph.state import AgentState
 from tools import get_code_tools, get_git_tools
+
+
+def clean_json_output(text: str) -> str:
+    """Clean JSON output that might be wrapped in markdown code blocks.
+
+    Handles formats like:
+    - ```json\n{...}\n```
+    - ```\n{...}\n```
+    - Plain JSON
+    """
+    # Remove markdown code blocks
+    text = re.sub(r'^```(?:json)?\s*\n?', '', text)
+    text = re.sub(r'\n?```\s*$', '', text)
+    return text.strip()
 
 
 class IntentClassification(BaseModel):
@@ -53,15 +69,26 @@ def orchestrator_node(
 - confidence: 0-1置信度
 - reasoning: 简短理由
 
-只返回 JSON，不要其他文本。""",
+严格要求：
+1. 只返回纯 JSON，不要任何其他文本
+2. 不要使用 Markdown 代码块 (```json ... ```)
+3. 直接返回 JSON 对象""",
         ),
         ("human", "{query}"),
     ])
 
-    structured_llm = llm.with_structured_output(IntentClassification)
-    chain = prompt | structured_llm
+    # Use custom JSON parser with markdown cleanup
+    parser = JsonOutputParser(pydantic_object=IntentClassification)
+    chain = prompt | llm | StrOutputParser() | (lambda x: json.loads(clean_json_output(x))) | (lambda x: IntentClassification(**x))
 
-    classification = chain.invoke({"query": state["user_query"]})
+    try:
+        classification = chain.invoke({"query": state["user_query"]})
+    except Exception as e:
+        # Fallback: try with structured output
+        print(f"⚠️  Custom parsing failed: {e}, trying structured output...")
+        structured_llm = llm.with_structured_output(IntentClassification)
+        fallback_chain = prompt | structured_llm
+        classification = fallback_chain.invoke({"query": state["user_query"]})
 
     # Route to appropriate agent
     intent = classification.intent.lower()

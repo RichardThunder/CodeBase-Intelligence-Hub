@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeBase Intelligence Hub</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>🧠 CodeBase Hub</h2>
+            </div>
+
+            <!-- Health Status -->
+            <div class="status-panel">
+                <h3>System Status</h3>
+                <div class="status-item">
+                    <span class="status-indicator" id="healthIndicator"></span>
+                    <span id="healthStatus">Checking...</span>
+                </div>
+            </div>
+
+            <!-- Session Info -->
+            <div class="session-panel">
+                <h3>Session</h3>
+                <div class="session-id">
+                    <input type="text" id="sessionId" readonly>
+                    <button id="resetSessionBtn" title="Generate new session">🔄</button>
+                </div>
+            </div>
+
+            <!-- Ingest Panel -->
+            <div class="ingest-panel">
+                <h3>Code Repository</h3>
+                <input type="text" id="repoPath" placeholder="Repository path (e.g., .)" value=".">
+                <button id="ingestBtn">📥 Ingest</button>
+                <div id="ingestStatus" class="ingest-status"></div>
+            </div>
+
+            <!-- Info -->
+            <div class="info-panel">
+                <h3>📚 Resources</h3>
+                <ul>
+                    <li><a href="/docs" target="_blank">API Docs</a></li>
+                    <li><a href="/redoc" target="_blank">ReDoc</a></li>
+                    <li><a href="/rag/playground" target="_blank">Playground</a></li>
+                </ul>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="system-message">
+                    <p>Welcome to <strong>CodeBase Intelligence Hub</strong></p>
+                    <p>Ask questions about your codebase and I'll help you understand, explore, and analyze it.</p>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input-area">
+                <div class="input-wrapper">
+                    <textarea
+                        id="queryInput"
+                        placeholder="Ask a question about the codebase... (Shift+Enter to send)"
+                        rows="1"
+                    ></textarea>
+                    <button id="sendBtn" title="Send (Shift+Enter)">
+                        <span>Send</span>
+                        <span class="send-icon">→</span>
+                    </button>
+                </div>
+                <div id="inputStatus" class="input-status"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

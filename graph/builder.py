@@ -47,13 +47,16 @@ def build_graph(
     def code_wrapper(state):
         return code_node(state, llm)
 
+    def synthesizer_wrapper(state):
+        return synthesizer_node(state, llm)
+
     # Register all nodes
     workflow.add_node("orchestrator", orchestrator_wrapper)
     workflow.add_node("retrieval", retrieval_wrapper)
     workflow.add_node("analysis", analysis_wrapper)
     workflow.add_node("code", code_wrapper)
     workflow.add_node("search", search_node)
-    workflow.add_node("synthesizer", synthesizer_node)
+    workflow.add_node("synthesizer", synthesizer_wrapper)
     workflow.add_node("human_approval", human_approval_node)
 
     # Entry point
