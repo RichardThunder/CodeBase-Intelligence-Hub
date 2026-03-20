@@ -113,9 +113,14 @@ def build_rag_chain_with_source(
         return sources
 
     # Retrieve and extract sources
-    retrieval_chain = RunnableParallel(
-        docs=retriever,
-        question=RunnablePassthrough(),
+    # Note: input is {"question": str, ...}, need to extract question for retriever
+    from langchain_core.runnables import RunnableLambda
+
+    retrieval_chain = RunnableLambda(
+        lambda x: {
+            "docs": retriever.invoke(x.get("question") if isinstance(x, dict) else x),
+            "question": x.get("question") if isinstance(x, dict) else x,
+        }
     ) | (lambda x: {
         "context": format_docs(x["docs"]),
         "question": x["question"],

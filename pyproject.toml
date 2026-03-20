@@ -1,7 +1,7 @@
 [project]
 name = "codebase-intelligence-hub"
 version = "0.1.0"
-description = "Add your description here"
+description = "A RAG-powered codebase Q&A system built with LangChain, LangGraph, and multi-agent patterns. Supports semantic code search, intelligent retrieval, and streaming API responses."
 readme = "README.md"
 
 requires-python = ">=3.11"
